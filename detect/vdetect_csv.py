@@ -151,12 +151,24 @@ if __name__ == "__main__":
 
     model.eval()  # Set in evaluation mode
 
+    # Bounding-box colors
+    cmap = plt.get_cmap("tab20b")
+    bbox_colors = []
+    for i in np.linspace(0, 1, 10):
+        r,g,b,a = cmap(i)
+        bbox_colors += [(b*255.0, g*255.0, r*255.0)]
+    text_size = 4
+
+    
     result = []
+
     classes = load_classes(opt.class_path)  # Extracts class labels from file
     data_loader = DataPrefetcher(VideoLoader(opt.vid))
     data_time = time.time()
     for i, (image, input_imgs) in enumerate(data_loader):
         load_time = time.time() - data_time
+
+        thickness = (image.shape[0] + image.shape[1]) // 600
 
         start_time = time.time()
         # Get detections
@@ -195,7 +207,16 @@ if __name__ == "__main__":
                     y1 = int((cy - h / 2) * org_h)
                     x2 = int((cx + w / 2) * org_w)
                     y2 = int((cy + h / 2) * org_h)
-                    cv2.rectangle(image, (x1, y1), (x2, y2), (255, 0, 0, 255), thickness=2)
+                    color = bbox_colors[int(cls_pred)]
+                    label = classes[int(cls_pred)]
+                    cv2.rectangle(image, (x1, y1), (x2, y2), color, thickness)
+
+                    (text_width, text_height), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 1, 2)
+                    text_end = x1 + text_width + thickness, y1 - text_height - baseline - thickness // 2
+
+                    cv2.rectangle(image, (x1 - thickness // 2, y1), text_end, color, thickness=cv2.FILLED)
+                    cv2.putText(image, label, (x1, y1 - baseline), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
+
         if opt.display:
             image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
             cv2.imshow('YOLOv3', image)
